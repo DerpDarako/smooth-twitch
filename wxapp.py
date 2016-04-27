@@ -55,7 +55,7 @@ class ToChange(wx.Frame):
                 elif cle == "viewers":
                     viewers = value
             self.list.Append([name, viewers])
-        self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.getFrChannels, self.list)
+        self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.getChannels, self.list)
         self.list.Bind(wx.EVT_SCROLLWIN_THUMBRELEASE, self.printAnd)
 
         "creation de la seconde liste"
@@ -83,7 +83,11 @@ class ToChange(wx.Frame):
         game = (event.GetItem().GetText()).replace(' ','+')
         buffer = StringIO()
         c = pycurl.Curl()
-        c.setopt(c.URL, 'https://api.twitch.tv/kraken/streams?game='+game+'&limit=10')
+        test = 1
+        if test == 1:
+            c.setopt(c.URL, 'https://api.twitch.tv/kraken/streams?game='+game+'&limit=10&broadcaster_language=fr')
+        else:
+            c.setopt(c.URL, 'https://api.twitch.tv/kraken/streams?game='+game+'&limit=10')
         c.setopt(c.HTTPHEADER,['Accept: application/vnd.twitchtv.v3+json'])
         "curl -H 'Accept: application/vnd.twitchtv.v2+json' -X GET https://api.twitch.tv/kraken/games/top"
         c.setopt(c.WRITEDATA, buffer)
