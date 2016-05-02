@@ -55,7 +55,7 @@ class ToChange(wx.Frame):
                 elif cle == "viewers":
                     viewers = value
             self.list.Append([name, viewers])
-        self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.getFrChannels, self.list)
+        self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.getChannels, self.list)
         self.list.Bind(wx.EVT_SCROLLWIN_THUMBRELEASE, self.printAnd)
 
         "creation de la seconde liste"
@@ -83,7 +83,11 @@ class ToChange(wx.Frame):
         game = (event.GetItem().GetText()).replace(' ','+')
         buffer = StringIO()
         c = pycurl.Curl()
-        c.setopt(c.URL, 'https://api.twitch.tv/kraken/streams?game='+game+'&limit=10')
+        test = 1
+        if test == 1:
+            c.setopt(c.URL, 'https://api.twitch.tv/kraken/streams?game='+game+'&limit=10&broadcaster_language=fr')
+        else:
+            c.setopt(c.URL, 'https://api.twitch.tv/kraken/streams?game='+game+'&limit=10')
         c.setopt(c.HTTPHEADER,['Accept: application/vnd.twitchtv.v3+json'])
         "curl -H 'Accept: application/vnd.twitchtv.v2+json' -X GET https://api.twitch.tv/kraken/games/top"
         c.setopt(c.WRITEDATA, buffer)
@@ -102,39 +106,6 @@ class ToChange(wx.Frame):
                     viewers = value
             self.channel.Append([name, title, viewers])
         self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.getQualities, self.channel)
-    def getFrChannels(self, event):
-        count = 0
-        offset = 0
-        game = (event.GetItem().GetText()).replace(' ','+')
-        self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.getQualities, self.channel)
-        self.channel.DeleteAllItems()
-        while (self.channel.GetItemCount() < 10):
-            buffer = StringIO()
-            c = pycurl.Curl()
-            offset = offset + (10 * count)
-            c.setopt(c.URL, 'https://api.twitch.tv/kraken/streams?game='+game+'&limit=10&offset='+str(offset))
-            c.setopt(c.HTTPHEADER,['Accept: application/vnd.twitchtv.v3+json'])
-            "curl -H 'Accept: application/vnd.twitchtv.v2+json' -X GET https://api.twitch.tv/kraken/games/top"
-            c.setopt(c.WRITEDATA, buffer)
-            c.perform()
-            c.close()
-            body = buffer.getvalue()
-            data = json.loads(body)
-            "print data['streams']"
-            "prendre les data en direct mb"
-            for data in data['streams']:
-                add = 0
-                for key, value in data.iteritems():
-                    if key == 'channel':
-                        name = value["name"]
-                        title = value["status"]
-                        if value["broadcaster_language"] == "fr":
-                            add = 1
-                    elif key == "viewers":
-                        viewers = value
-                if add:
-                    self.channel.Append([name, title, viewers])
-            count += 1
 
     def getQualities(self, event):
         stream = event.GetText()
