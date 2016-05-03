@@ -2,96 +2,135 @@
 # coding: utf-8
 
 import sys
-"""
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from PyQt4 import QtCore, QtGui
-import livestreamer
-"""
+import twitch
 from PyQt4 import QtGui, QtCore
-import pycurl
-import json
-from StringIO import StringIO
 
-def window():
-    "wxapp"
-    buffer = StringIO()
-    c = pycurl.Curl()
-    c.setopt(c.URL, 'https://api.twitch.tv/kraken/games/top?limit=10')
-    c.setopt(c.HTTPHEADER,['Accept: application/vnd.twitchtv.v2+json'])
-    "curl -H 'Accept: application/vnd.twitchtv.v2+json' -X GET https://api.twitch.tv/kraken/games/top"
-    c.setopt(c.WRITEDATA, buffer)
-    c.perform()
-    c.close()
-    body = buffer.getvalue()
-    data = json.loads(body)
-    app = QtGui.QApplication(sys.argv)
-    win = QtGui.QWidget()
-    grid = QtGui.QGridLayout()
-    view = QtGui.QTableWidget()
-    channels = QtGui.QTableWidget()
-    channels.setColumnCount(3)
-    channels.setRowCount(10)
 
-    view.setColumnCount(2)
-    view.setRowCount(10)
-    i = 0
-    view.setHorizontalHeaderLabels(QtCore.QString("Name;Count;").split(";"))
-    channels.setHorizontalHeaderLabels(QtCore.QString("Name;Title;Count;").split(";"))
-    for key in data['top']:
-        for cle, value in key.iteritems():
-            if cle == "game":
-                name = value['name']
-            elif cle == "viewers":
-                viewers = value
-                print viewers
-        view.setItem(i,0,QtGui.QTableWidgetItem(name))
-        view.setItem(i,1,QtGui.QTableWidgetItem(str(viewers)))
-        i +=1
-    grid.addWidget(view,0,0,2,2)
-    grid.addWidget(channels,0,2,2,2)
-    grid.addWidget(QtGui.QPushButton("B"),1,5,1,1)
-    view.verticalHeader().setVisible(False)
-    win.setLayout(grid)
-    win.setGeometry(2500,200,400,400)
-    win.setFixedSize(450,250)
-    win.setWindowTitle("PyQt")
-    win.show()
+class Main():
 
-    scroll = view.verticalScrollBar()
-    scroll_max = scroll.maximum()
-    scroll.valueChanged.connect(lambda value :scrollEvent(value, scroll_max))
-    view.cellClicked.connect(lambda row, col:cellClick(row, col, view, channels))
-    sys.exit(app.exec_())
+    def __init__(self, argv):
+        self.app = QtGui.QApplication(argv)
+        self.twitch = twitch.TwitchApi()
+        self.game_row = 10
+        self.stream_row = 10
+        self.quality = "best"
+        x = 2500
+        y = 200
+        width = 900
+        heigth = 300
+        self.initialize(x, y, width, heigth)
 
-def scrollEvent(value, scroll_max):
-    if value == scroll_max:
-        print "update"
-def cellClick(row,col, view, channels):
-    game= view.item(row,col).text().replace(' ','+')
-    buffer = StringIO()
-    c = pycurl.Curl()
-    url = "https://api.twitch.tv/kraken/streams?game=%s&limit=10&broadcaster_language=fr" % (game)
-    c.setopt(c.URL,url )
-    c.setopt(c.HTTPHEADER,['Accept: application/vnd.twitchtv.v3+json'])
-    "curl -H 'Accept: application/vnd.twitchtv.v2+json' -X GET https://api.twitch.tv/kraken/games/top"
-    c.setopt(c.WRITEDATA, buffer)
-    c.perform()
-    c.close()
-    body = buffer.getvalue()
-    data = json.loads(body)
-    i = 0
-    for data in data['streams']:
-        for key, value in data.iteritems():
-            if key == 'channel':
-                name = value["name"]
-                title = value["status"]
-            elif key == "viewers":
-                viewers = value
-        channels.setItem(i,0,QtGui.QTableWidgetItem(name))
-        channels.setItem(i,1,QtGui.QTableWidgetItem(title))
-        channels.setItem(i,2,QtGui.QTableWidgetItem(str(viewers)))
-        i += 1
+    def initialize(self, x, y , width, heigth):
+        self.win = QtGui.QWidget()
+        self.grid = QtGui.QGridLayout()
+        self.win.setLayout(self.grid)
 
-if __name__ == '__main__':
-    window()
+        "table games"
+        self.table_games = QtGui.QTableWidget()
+        self.table_games.setColumnCount(2)
+        self.table_games.setRowCount(self.game_row)
+        self.table_games.setColumnWidth(0,250)
+        self.table_games.verticalHeader().setVisible(False)
+        self.table_games.horizontalScrollBar().setDisabled(True)
+        self.table_games.horizontalScrollBar().setVisible(False)
+        self.table_games.setHorizontalHeaderLabels(QtCore.QString("Name;Count;").split(";"))
+        self.table_games.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+
+        "table streams"
+        self.table_streams = QtGui.QTableWidget()
+        self.table_streams.setColumnCount(3)
+        self.table_streams.setHorizontalHeaderLabels(QtCore.QString("Name;Title;Count;").split(";"))
+        self.table_streams.setRowCount(0)
+        self.table_streams.setColumnWidth(1,250)
+        self.table_streams.horizontalScrollBar().setVisible(False)
+        self.table_streams.verticalHeader().setVisible(False)
+        self.table_streams.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+
+        "combobox"
+        self.combo_quality = QtGui.QComboBox()
+
+
+        "more games"
+        self.button_games = QtGui.QPushButton("Get more games")
+        self.button_games.setDisabled(True)
+
+        "more streams"
+        self.button_streams = QtGui.QPushButton("Get more streams")
+        self.button_streams.setDisabled(True)
+
+        "watch"
+        self.button_watch = QtGui.QPushButton("Watch")
+        self.button_watch.setDisabled(True)
+
+        "grid"
+        self.grid.addWidget(self.table_games, 0, 0, 3, 2)
+        self.grid.addWidget(self.table_streams, 0, 2, 3, 3)
+        self.grid.addWidget(self.button_games, 3, 0, 1, 1)
+        self.grid.addWidget(self.button_streams, 3, 2, 1, 1)
+        self.grid.addWidget(self.combo_quality, 0, 5, 1, 1)
+        self.grid.addWidget(self.button_watch, 1, 5, 1, 1)
+
+        "events"
+        self.table_games.verticalScrollBar().valueChanged.connect(self.scroll_games_event)
+        self.table_games.cellClicked.connect(self.load_streamers)
+        self.table_streams.cellClicked.connect(self.load_qualities)
+        self.table_streams.verticalScrollBar().valueChanged.connect(self.scroll_streams_event)
+        self.button_watch.clicked.connect(self.watch_stream)
+
+        "load games"
+        self.win.setGeometry(x,y, width, heigth)
+        self.win.setFixedSize(width, heigth)
+        self.win.setWindowTitle("PyQt")
+        self.win.show()
+        self.load_games()
+        sys.exit(self.app.exec_())
+
+    def scroll_games_event(self, value):
+        if self.table_games.verticalScrollBar().maximum() == value:
+            self.button_games.setDisabled(False)
+    def scroll_streams_event(self, value):
+        if self.table_streams.verticalScrollBar().maximum() == value:
+            if self.table_streams.rowCount() == self.stream_row:
+                self.button_streams.setDisabled(False)
+
+    def load_games(self):
+        data = self.twitch.get_games()
+        i = 0
+        for key in data['top']:
+            name = key["game"]['name']
+            viewers = key["viewers"]
+            self.table_games.setItem(i, 0, QtGui.QTableWidgetItem(name))
+            self.table_games.setItem(i, 1, QtGui.QTableWidgetItem(str(viewers)))
+            i += 1
+
+    def load_streamers(self, row, col):
+        game = self.table_games.item(row, 0).text().replace(' ','+')
+        datas = self.twitch.get_streamers(game)
+        self.table_streams.setDisabled(False)
+        self.stream_row = len(datas['streams'])
+        self.table_streams.setRowCount(self.stream_row)
+        self.table_streams.verticalScrollBar().setValue(0)
+        i = 0
+        for data in datas['streams']:
+            name = data['channel']['name']
+            title = data['channel']['status']
+            viewers = data['viewers']
+            self.table_streams.setItem(i, 0, QtGui.QTableWidgetItem(name))
+            self.table_streams.setItem(i, 1, QtGui.QTableWidgetItem(title))
+            self.table_streams.setItem(i, 2, QtGui.QTableWidgetItem(str(viewers)))
+            i += 1
+    def load_qualities(self, row, col):
+        streamer = self.table_streams.item(row, 0).text()
+        self.combo_quality.clear()
+        index = 0
+        for quality in self.twitch.get_qualities(streamer):
+            self.combo_quality.addItem(QtCore.QString(quality))
+            if quality ==  self.quality:
+                self.combo_quality.setCurrentIndex(index)
+            index += 1
+        self.button_watch.setDisabled(False)
+    def watch_stream(self, boolean):
+        print self.combo_quality.currentText()
+
+if __name__ == "__main__":
+    s = Main(sys.argv)
