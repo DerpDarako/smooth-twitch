@@ -6,6 +6,7 @@ from StringIO import StringIO
 import json
 import livestreamer
 
+
 class TwitchApi():
 
     def __init__(self, limit, offset):
@@ -15,6 +16,7 @@ class TwitchApi():
     def twitch_request(self, url, header):
         buffer = StringIO()
         c = pycurl.Curl()
+        c.setopt(c.SSL_VERIFYPEER, 0)
         c.setopt(c.URL, url)
         c.setopt(c.HTTPHEADER,[header])
         c.setopt(c.WRITEDATA, buffer)
