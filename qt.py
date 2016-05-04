@@ -2,7 +2,7 @@
 # coding: utf-8
 
 import sys
-import twitch
+from src.twitch import TwitchApi
 from PyQt4 import QtGui, QtCore
 
 
@@ -10,7 +10,8 @@ class Main():
 
     def __init__(self, argv):
         self.app = QtGui.QApplication(argv)
-        self.twitch = twitch.TwitchApi()
+        self.twitch = TwitchApi(limit = 10, offset = 10)
+        self.current_game = ""
         self.game_row = 10
         self.stream_row = 10
         self.quality = "best"
@@ -76,6 +77,7 @@ class Main():
         self.table_streams.cellClicked.connect(self.load_qualities)
         self.table_streams.verticalScrollBar().valueChanged.connect(self.scroll_streams_event)
         self.button_watch.clicked.connect(self.watch_stream)
+        self.button_streams.clicked.connect(self.more_streams)
 
         "load games"
         self.win.setGeometry(x,y, width, heigth)
@@ -104,8 +106,8 @@ class Main():
             i += 1
 
     def load_streamers(self, row, col):
-        game = self.table_games.item(row, 0).text().replace(' ','+')
-        datas = self.twitch.get_streamers(game)
+        self.current_game = self.table_games.item(row, 0).text().replace(' ','+')
+        datas = self.twitch.get_streamers(self.current_game)
         self.table_streams.setDisabled(False)
         self.stream_row = len(datas['streams'])
         self.table_streams.setRowCount(self.stream_row)
@@ -131,6 +133,22 @@ class Main():
         self.button_watch.setDisabled(False)
     def watch_stream(self, boolean):
         print self.combo_quality.currentText()
+
+    def more_streams(self, boolean):
+        datas = self.twitch.get_streamers(self.current_game, self.table_streams.rowCount())
+        self.table_streams.setDisabled(False)
+        i = self.stream_row
+        self.stream_row += len(datas['streams'])
+        self.table_streams.setRowCount(self.stream_row)
+        self.button_streams.setDisabled(True)
+        for data in datas['streams']:
+            name = data['channel']['name']
+            title = data['channel']['status']
+            viewers = data['viewers']
+            self.table_streams.setItem(i, 0, QtGui.QTableWidgetItem(name))
+            self.table_streams.setItem(i, 1, QtGui.QTableWidgetItem(title))
+            self.table_streams.setItem(i, 2, QtGui.QTableWidgetItem(str(viewers)))
+            i += 1
 
 if __name__ == "__main__":
     s = Main(sys.argv)
